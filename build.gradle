@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+ext {
+    javaVersion = '1.8'
+    flinkVersion = '1.17.0'
+    scalaBinaryVersion = '2.12'
+    log4jVersion = '2.12.1'
+    junitVersion = '4.13'
+}
+
+dependencies {
+    implementation group: 'com.ververica', name: 'flink-connector-mysql-cdc', version: '2.4.0'
+    implementation group: 'org.apache.flink', name: 'flink-streaming-java', version: '1.17.0'
+    implementation group: 'org.apache.flink', name: 'flink-java', version: '1.17.0'
+    implementation group: 'org.apache.flink', name: 'flink-clients', version: '1.17.0'
+    implementation group: 'org.apache.flink', name: 'flink-table-runtime', version: '1.17.0'
+
+    implementation group: 'org.apache.flink', name: 'flink-table-planner-loader', version: '1.17.0'
+    implementation group: 'org.apache.flink', name: 'flink-table-api-java-bridge', version: '1.17.0'
+    implementation group: 'org.apache.flink', name: 'flink-connector-kafka', version: '1.17.0'
+    implementation group: 'org.apache.flink', name: 'flink-connector-base', version: '1.17.0'
+    implementation group: 'org.apache.flink', name: 'flink-json', version: '1.17.0'
+//    implementation group: 'com.ververica', name: 'flink-sql-connector-mysql-cdc', version: '2.4.0'
+    implementation group: 'org.apache.flink', name: 'flink-connector-jdbc', version: '3.1.1-1.17'
+    implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.29'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.12.1'
+    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version: '2.12.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-slf4j-impl', version: '2.17.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.1'
+}
+
+test {
+    useJUnitPlatform()
+}
