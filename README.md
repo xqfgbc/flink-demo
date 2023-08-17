@@ -2,7 +2,8 @@
 
 ## 准备工作（flink基于1.17.0版本）
 * 本demo默认你已经完成了flink cdc官方的demo，在本地有mysql，flink，elastic-search的环境 [quick start](https://ververica.github.io/flink-cdc-connectors/master/content/%E5%BF%AB%E9%80%9F%E4%B8%8A%E6%89%8B/mysql-postgres-tutorial-zh.html)
-* 受环境限制，以下提供本地podman容器单独启动各组件的方式
+* 受环境限制，以下提供本地podman容器单独启动各组件的方式. Tips: 也可以使用podman-compose方式启动, 在项目的跟目录执行 `podman-compose up -d` 即可 
+
 1. 启动相关镜像
 ```shell
 podman network create esnetwork
