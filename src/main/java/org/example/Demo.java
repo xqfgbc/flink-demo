@@ -77,7 +77,7 @@ public class Demo {
     private static IndexRequest createIndexRequest(TargetRow element) {
         Map<String, Object> json = new HashMap<>(element.getColumns());
         return Requests.indexRequest()
-                .index("es-order")
+                .index(element.getTable())
                 .id(element.getPrimaryKeys().get(0))
                 .source(json);
     }
@@ -88,7 +88,7 @@ public class Demo {
             primaryKeys.add(row.getColumns().get("order_id"));
 
             return new TargetRow(
-                    "my-index",
+                    "es-order",
                     primaryKeys,
                     row.getColumns(),
                     row.getRowKind());
