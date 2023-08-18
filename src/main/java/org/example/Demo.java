@@ -1,19 +1,25 @@
 package org.example;
 
-import com.alibaba.fastjson.JSONObject;
 import com.ververica.cdc.connectors.mysql.source.MySqlSource;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.connector.elasticsearch.sink.Elasticsearch7SinkBuilder;
+import org.apache.flink.connector.elasticsearch.sink.ElasticsearchSink;
 import org.apache.flink.runtime.state.hashmap.HashMapStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.AsyncDataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.http.HttpHost;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.Requests;
 
-import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
 
 public class Demo {
     public static void main(String[] args) throws Exception {
@@ -48,6 +54,13 @@ public class Demo {
         SingleOutputStreamOperator<SourceRow> orderAll = AsyncDataStream.unorderedWait(
                 orderSource, new ProductDimAsyncFunction("mydb.products"), 60, TimeUnit.SECONDS);
 
+        ElasticsearchSink<TargetRow> esSink = new Elasticsearch7SinkBuilder<TargetRow>()
+                .setBulkFlushMaxActions(1) // Instructs the sink to emit after every element, otherwise they would be buffered
+                .setHosts(new HttpHost("127.0.0.1", 9200, "http"))
+                .setEmitter(
+                        (element, context, indexer) ->
+                                indexer.add(createIndexRequest(element)))
+                .build();
 
 
         var sourceRows = orderAll
@@ -56,19 +69,26 @@ public class Demo {
 
         sourceRows.print();
         sourceRows.map(getRowMapFunction())
-                .print();
-//                .addSink(new TargetRowSinkFunction());
+                .sinkTo(esSink);
 
         env.execute("BinlogJob");
+    }
+
+    private static IndexRequest createIndexRequest(TargetRow element) {
+        Map<String, Object> json = new HashMap<>(element.getColumns());
+        return Requests.indexRequest()
+                .index("es-order")
+                .id(element.getPrimaryKeys().get(0))
+                .source(json);
     }
 
     private static MapFunction<SourceRow, TargetRow> getRowMapFunction() {
         return row -> {
             var primaryKeys = new ArrayList<String>();
-            primaryKeys.add("id");
+            primaryKeys.add(row.getColumns().get("order_id"));
 
             return new TargetRow(
-                    "es_orders",
+                    "my-index",
                     primaryKeys,
                     row.getColumns(),
                     row.getRowKind());

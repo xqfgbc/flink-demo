@@ -18,6 +18,8 @@ ext {
 
 dependencies {
     implementation group: 'com.ververica', name: 'flink-connector-mysql-cdc', version: '2.4.0'
+    implementation group: 'org.apache.flink', name: 'flink-connector-elasticsearch7', version: '3.0.1-1.17'
+
     implementation group: 'org.apache.flink', name: 'flink-streaming-java', version: '1.17.0'
     implementation group: 'org.apache.flink', name: 'flink-java', version: '1.17.0'
     implementation group: 'org.apache.flink', name: 'flink-clients', version: '1.17.0'
