@@ -1,12 +1,19 @@
 package org.example;
 
+import com.alibaba.fastjson.JSONObject;
 import com.ververica.cdc.connectors.mysql.source.MySqlSource;
-import com.ververica.cdc.debezium.JsonDebeziumDeserializationSchema;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.runtime.state.hashmap.HashMapStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
+import org.apache.flink.streaming.api.datastream.AsyncDataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 public class Demo {
     public static void main(String[] args) throws Exception {
@@ -25,28 +32,63 @@ public class Demo {
 
 
         //TODO 2,使用FlinkCDC构建Source
-        MySqlSource<String> mySqlSource = MySqlSource.<String>builder()
+        MySqlSource<SourceRow> mySqlSource = MySqlSource.<SourceRow>builder()
                 .hostname("127.0.0.1")
                 .port(3306)
                 .databaseList("mydb") // set captured database
-                .tableList("mydb.products", "mydb.orders") // set captured table
+                .tableList("mydb.orders") // set captured table
                 .username("root")
                 .password("root")
-                .deserializer(new JsonDebeziumDeserializationSchema()) // converts SourceRecord to JSON String
+                .deserializer(new SourceRowDeserializer()) // converts SourceRecord to JSON String
                 .serverTimeZone("UTC")
                 .build();
 
-        //TODO 3,读取数据
-        DataStreamSource<String> mysqlDS = env.fromSource(mySqlSource
-                , WatermarkStrategy.noWatermarks(),
-                "Mysql"
-        );
+        DataStreamSource<SourceRow> orderSource = env.fromSource(mySqlSource, WatermarkStrategy.noWatermarks(), "mysql");
+
+        SingleOutputStreamOperator<SourceRow> orderAll = AsyncDataStream.unorderedWait(
+                orderSource, new ProductDimAsyncFunction("mydb.products"), 60, TimeUnit.SECONDS);
 
 
-        //TODO 4,打印
-        mysqlDS.print(">>>>>>>>>");
 
-        //TODO 5,启动
-        env.execute();
+        var sourceRows = orderAll
+                .setParallelism(1)
+                .keyBy(SourceRow::getTable);
+
+        sourceRows.print();
+        sourceRows.map(getRowMapFunction())
+                .print();
+//                .addSink(new TargetRowSinkFunction());
+
+        env.execute("BinlogJob");
+    }
+
+    private static MapFunction<SourceRow, TargetRow> getRowMapFunction() {
+        return row -> {
+            var primaryKeys = new ArrayList<String>();
+            primaryKeys.add("id");
+
+            return new TargetRow(
+                    "es_orders",
+                    primaryKeys,
+                    row.getColumns(),
+                    row.getRowKind());
+        };
+    }
+
+    private static String getProductTableDDL() {
+        return "CREATE TABLE products (\n" +
+                "    id INT,\n" +
+                "    name STRING,\n" +
+                "    description STRING,\n" +
+                "    PRIMARY KEY (id) NOT ENFORCED\n" +
+                "  ) WITH (\n" +
+                "   'server-time-zone'='UTC',\n" +
+                "    'connector' = 'jdbc',\n" +
+                "    'url' = 'jdbc:mysql://127.0.0.1:3306/mydb',\n" +
+                "    'driver' = 'com.mysql.cj.jdbc.Driver',\n" +
+                "    'username' = 'root',\n" +
+                "    'password' = 'root',\n" +
+                "    'table-name' = 'mydb.products'\n" +
+                "  );";
     }
 }
