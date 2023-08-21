@@ -1,49 +1,101 @@
 plugins {
     id 'java'
+    id 'application'
+    // shadow plugin to produce fat JARs
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+ext {
+    javaVersion = '11'
+    flinkVersion = '1.17.0'
+    scalaBinaryVersion = '2.12'
+    slf4jVersion = '1.7.36'
+    log4jVersion = '2.17.1'
+    flinkVersionNew = flinkVersion.toString().replace("-SNAPSHOT", "") >= "1.17"
 }
 
 group = 'org.example'
 version = '1.0-SNAPSHOT'
+mainClassName = 'org.example.Demo'
+
+sourceCompatibility = javaVersion
+targetCompatibility = javaVersion
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+applicationDefaultJvmArgs = ["-Dlog4j.configurationFile=log4j2.properties"]
 
 repositories {
     mavenCentral()
+    maven {
+        url "https://repository.apache.org/content/repositories/snapshots"
+        mavenContent {
+            snapshotsOnly()
+        }
+    }
 }
-ext {
-    javaVersion = '1.8'
-    flinkVersion = '1.17.0'
-    scalaBinaryVersion = '2.12'
-    log4jVersion = '2.12.1'
-    junitVersion = '4.13'
+
+// NOTE: We cannot use "compileOnly" or "shadow" configurations since then we could not run code
+// in the IDE or with "gradle run". We also cannot exclude transitive dependencies from the
+// shadowJar yet (see https://github.com/johnrengelman/shadow/issues/159).
+// -> Explicitly define the // libraries we want to be included in the "flinkShadowJar" configuration!
+configurations {
+    flinkShadowJar // dependencies which go into the shadowJar
+
+    // always exclude these (also from transitive dependencies) since they are provided by Flink
+    flinkShadowJar.exclude group: 'org.apache.flink', module: 'force-shading'
+    flinkShadowJar.exclude group: 'com.google.code.findbugs', module: 'jsr305'
+    flinkShadowJar.exclude group: 'org.slf4j'
+    flinkShadowJar.exclude group: 'org.apache.logging.log4j'
 }
 
 dependencies {
-    implementation group: 'com.ververica', name: 'flink-connector-mysql-cdc', version: '2.4.0'
-    implementation group: 'org.apache.flink', name: 'flink-connector-elasticsearch7', version: '3.0.1-1.17'
-
-    implementation group: 'org.apache.flink', name: 'flink-streaming-java', version: '1.17.0'
-    implementation group: 'org.apache.flink', name: 'flink-java', version: '1.17.0'
-    implementation group: 'org.apache.flink', name: 'flink-clients', version: '1.17.0'
-    implementation group: 'org.apache.flink', name: 'flink-table-runtime', version: '1.17.0'
-
-    implementation group: 'org.apache.flink', name: 'flink-table-planner-loader', version: '1.17.0'
-    implementation group: 'org.apache.flink', name: 'flink-table-api-java-bridge', version: '1.17.0'
-    implementation group: 'org.apache.flink', name: 'flink-connector-kafka', version: '1.17.0'
-    implementation group: 'org.apache.flink', name: 'flink-connector-base', version: '1.17.0'
-    implementation group: 'org.apache.flink', name: 'flink-json', version: '1.17.0'
-//    implementation group: 'com.ververica', name: 'flink-sql-connector-mysql-cdc', version: '2.4.0'
+    implementation group: 'org.apache.flink', name: 'flink-streaming-java', version: "${flinkVersion}"
+    implementation group: 'org.apache.flink', name: 'flink-java', version: "${flinkVersion}"
+    implementation group: 'org.apache.flink', name: 'flink-clients', version: "${flinkVersion}"
+    implementation group: 'org.apache.flink', name: 'flink-table-runtime', version: "${flinkVersion}"
+    implementation group: 'org.apache.flink', name: 'flink-table-planner-loader', version: "${flinkVersion}"
+    implementation group: 'org.apache.flink', name: 'flink-table-api-java-bridge', version: "${flinkVersion}"
+    implementation group: 'org.apache.flink', name: 'flink-connector-kafka', version: "${flinkVersion}"
+    implementation group: 'org.apache.flink', name: 'flink-connector-base', version: "${flinkVersion}"
+    implementation group: 'org.apache.flink', name: 'flink-json', version: "${flinkVersion}"
     implementation group: 'org.apache.flink', name: 'flink-connector-jdbc', version: '3.1.1-1.17'
-    implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.29'
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.12.1'
-    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version: '2.12.1'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-slf4j-impl', version: '2.17.1'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.1'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.1'
-    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
+
+    flinkShadowJar group: 'org.apache.flink', name: 'flink-connector-elasticsearch7', version: '3.0.1-1.17'
+    flinkShadowJar group: 'com.ververica', name: 'flink-connector-mysql-cdc', version: '2.4.0'
+    flinkShadowJar group: 'mysql', name: 'mysql-connector-java', version: '8.0.29'
+    flinkShadowJar group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.12.1'
+    flinkShadowJar group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version: '2.12.1'
+    runtimeOnly group: 'org.apache.logging.log4j', name: 'log4j-slf4j-impl', version: "${log4jVersion}"
+    runtimeOnly group: 'org.apache.logging.log4j', name: 'log4j-api', version: "${log4jVersion}"
+    runtimeOnly group: 'org.apache.logging.log4j', name: 'log4j-core', version: "${log4jVersion}"
+    flinkShadowJar group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
     annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
-    implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.3'
-    implementation group: 'com.alibaba', name: 'fastjson', version: '1.2.75'
+    flinkShadowJar group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.3'
+    flinkShadowJar group: 'com.alibaba', name: 'fastjson', version: '1.2.75'
 }
 
-test {
-    useJUnitPlatform()
+// make compileOnly dependencies available for tests:
+sourceSets {
+    main.compileClasspath += configurations.flinkShadowJar
+    main.runtimeClasspath += configurations.flinkShadowJar
+
+    test.compileClasspath += configurations.flinkShadowJar
+    test.runtimeClasspath += configurations.flinkShadowJar
+
+    javadoc.classpath += configurations.flinkShadowJar
+}
+
+run.classpath = sourceSets.main.runtimeClasspath
+
+jar {
+    manifest {
+        attributes 'Built-By': System.getProperty('user.name'),
+                'Build-Jdk': System.getProperty('java.version')
+    }
+}
+
+shadowJar {
+    configurations = [project.configurations.flinkShadowJar]
 }

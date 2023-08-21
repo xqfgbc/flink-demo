@@ -25,7 +25,7 @@ public class Demo {
     public static void main(String[] args) throws Exception {
         //TODO 1,获取执行环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(3);
+        env.setParallelism(1);
 
 
         //开启CK

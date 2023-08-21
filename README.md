@@ -36,9 +36,18 @@ CREATE TABLE orders (
 ```
 
 3. flink与flink cdc的版本对应关系有强一致性要求，参考build.gradle中的配置
+4. 使用官方模版创建项目 [quickstart script](https://nightlies.apache.org/flink/flink-docs-release-1.17/docs/dev/configuration/overview/#quickstart-script)
+```shell
+bash -c "$(curl https://flink.apache.org/q/gradle-quickstart.sh)" -- 1.17.0 _2.12
+```
 
 ## 本demo要解决的问题
 * 在ide中，使用flink datastream api方式获取mysql数据库变化
 * 在ide中，使用jdbc的方式从source库查询关联表数据
 * 在ide中，将之前步骤数据进行聚合处理并写入es
 * 将demo发布到flink集群中运行
+
+### 如何编译自定义jar包，发布到flink集群中
+* [官方教程](https://nightlies.apache.org/flink/flink-docs-release-1.17/docs/dev/configuration/gradle/)
+* 使用gradle打包，执行 `./gradlew clean installShadowDist` , 即可在build/libs目录下生成jar包
+* 启动本地flink环境后，将jar包放在flink特定目录下，使用`./bin/flink run --detached ./examples/streaming/flink-demo-1.0-SNAPSHOT-all.jar` 命令添加任务
