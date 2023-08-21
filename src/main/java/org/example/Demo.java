@@ -94,21 +94,4 @@ public class Demo {
                     row.getRowKind());
         };
     }
-
-    private static String getProductTableDDL() {
-        return "CREATE TABLE products (\n" +
-                "    id INT,\n" +
-                "    name STRING,\n" +
-                "    description STRING,\n" +
-                "    PRIMARY KEY (id) NOT ENFORCED\n" +
-                "  ) WITH (\n" +
-                "   'server-time-zone'='UTC',\n" +
-                "    'connector' = 'jdbc',\n" +
-                "    'url' = 'jdbc:mysql://127.0.0.1:3306/mydb',\n" +
-                "    'driver' = 'com.mysql.cj.jdbc.Driver',\n" +
-                "    'username' = 'root',\n" +
-                "    'password' = 'root',\n" +
-                "    'table-name' = 'mydb.products'\n" +
-                "  );";
-    }
 }
